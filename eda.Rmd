@@ -210,7 +210,6 @@ how.many.needed <- function(fraction, cumulative, round.up = TRUE) {
 }
 ```
 
-
 We do the following with each input file:
 
 * Tokenize the data into words and 2-grams
@@ -218,36 +217,6 @@ We do the following with each input file:
 
 We then total the uses for each word or 2-gram, plot the counts, and determine
 how many we need to meet various fractions of word usage.
-
-```{r runAnalysis, echo=FALSE, message=FALSE}
-# Initialize single-word and n-gram data frames
-word.df <- create.df("word", data.sources)
-ngram.df <- create.df("word", data.sources)
-
-# Build data frames
-word.df <- build.df(data.sources, sample.fraction, data.dir, locale, word.df, 1)
-#ngram.df <- build.df(srcs, sample.fraction, dir, locale, ngram.df, 2)
-
-coverage.fractions = c(0.5, 0.9, 0.95, 0.99, 0.999)
-needed.words <- lapply(coverage.fractions, FUN = (how.many.needed), cumulative = word.df$cumsum)
-
-
-head(word.df)
-max.y.rowindex <- max(floor(length(word.df$word) / 100), 1)
-max.y <- word.df[max.y.rowindex, "total"]
-plot(word.df[,2], type = "l", ylim = c(0, max.y), col = 1)
-for (i in 3:length(word.df)) {
-    lines(word.df[,i], col = i - 1)
-}
-
-total.tokens <- word.df[length(word.df$word), "cumsum"]
-most.tokens  <- total.tokens * 0.90
-highest.needed.row <- min(which(word.df$cumsum > most.tokens))
-
-print(paste("need:", highest.needed.row))
-word.df
-}
-```
 
 ### Tokenization
 
@@ -291,13 +260,76 @@ This section presents basic statistics about the data set:
 * Distinct word usages
 * What fraction of words or 2-grams we need to cover various fractions of the data set
 
-uses stringi package (others?)
+First, let's find basic statistics about each file.
 
-tokenization
- assumptions
- process
+Line counts:
 
-counting
-single words: process, summary tables, exploratory graphs
-2-grams: same
+```{r countLines, echo=TRUE}
+sapply(srcs, FUN = line.count, dir = data.dir, locale = locale)
+```
 
+For word counts, we go ahead and perform the full tokenization, which we can
+sum the results of:
+
+```{r runAnalysis, echo=TRUE}
+# Initialize single-word and n-gram data frames
+word.df <- create.df("word", data.sources)
+ngram.df <- create.df("word", data.sources)
+
+# Build data frames
+word.df <- build.df(data.sources, sample.fraction, data.dir, locale, word.df, 1)
+#ngram.df <- build.df(srcs, sample.fraction, dir, locale, ngram.df, 2)
+```
+
+Total word (token) counts:
+
+```{r totalWordCounts, echo=TRUE}
+sapply(word.df[,srcs], FUN = sum, simplify = "array")
+```
+
+The combined sources include ```r length(word.df[1])``` distinct words.
+
+The following plots show clearly that most text comprises a surprisingly small
+number of words. The plots have been rescaled to show a bit more detail than
+would be apparent if the highest word frequencies were on the plot.
+
+```{r plotWordAnalysis, echo=FALSE, message=FALSE, fig.align='center', fig.height=2, fig.width=6}
+max.y.rowindex <- max(floor(length(word.df$word) / 100), 1)
+max.y <- word.df[max.y.rowindex, "total"]
+
+par(mfrow = c(1, 2))
+
+plot(word.df[,2], type = "l", ylim = c(0, max.y), col = 1, ylab = "Word Use Count")
+for (i in 3:length(word.df)) {
+    lines(word.df[,i], col = i - 1)
+}
+
+max.y.rowindex <- max(floor(length(ngram.df$word) / 100), 1)
+max.y <- ngram.df[max.y.rowindex, "total"]
+
+plot(ngram.df[,2], type = "l", ylim = c(0, max.y), col = 1, ylab = "2-Gram Use Count")
+for (i in 3:length(ngram.df)) {
+    lines(ngram.df[,i], col = i - 1)
+}
+```
+
+The fraction of words needed to cover a given number of uses is:
+
+```{r coverage}
+total.tokens <- word.df[length(word.df$word), "cumsum"]
+most.tokens  <- total.tokens * 0.90
+highest.needed.row <- min(which(word.df$cumsum > most.tokens))
+
+print(paste("need:", highest.needed.row))
+word.df
+}
+```
+
+```{r coverage, echo=TRUE}
+distinct.words = length(word.df[1])
+
+coverage.fractions = c(0.5, 0.9, 0.95, 0.99, 0.999)
+needed.words <- lapply(coverage.fractions, FUN = (how.many.needed), cumulative = word.df$cumsum)
+
+needed.words
+```
