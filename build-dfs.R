@@ -45,7 +45,7 @@ normalize.token <- function(s) {
     }
 }
 
-populate.word.df <- function(word.df, src, word) {
+populate.word.df <- function(src, word) {
     # Add the word to the word data frame.
     
     i <- which(word.df$word == word)
@@ -53,6 +53,9 @@ populate.word.df <- function(word.df, src, word) {
     if (length(i) == 0) {
         # Word not previously found: add row
         old.len = nrow(word.df$word)
+        if (is.null(old.len)) {
+            old.len = 0;
+        }
         new.len <- old.len + 1
         current.width <- length(word.df)
         
@@ -65,12 +68,12 @@ populate.word.df <- function(word.df, src, word) {
     }
 }
 
-populate.ngram.df <- function(ngram.df, src, tokens, i) {
+populate.ngram.df <- function(src, tokens, i) {
     # Add the appropriate n-gram (tokens i and i-1) to the n-gram data frame.
     
 }
 
-populate.dfs <- function(src, con, sample.fraction = 1.0, word.df, ngram.df) {
+populate.dfs <- function(src, con, sample.fraction = 1.0) {
     # Filter the specified input file, populating data frames with
     # word and n-gram counts. Use randomly-selected lines in the input
     # file (with probability sample.fraction). All tokens are upper case.
@@ -91,8 +94,8 @@ populate.dfs <- function(src, con, sample.fraction = 1.0, word.df, ngram.df) {
             print(paste("adding tokens:", tokens))
             
             for (i in 1:length(tokens)) {
-                populate.word.df(word.df, src, tokens[i])
-                populate.ngram.df(ngram.df, src, tokens, i)
+                populate.word.df(src, tokens[i])
+                populate.ngram.df(src, tokens, i)
             }
         }
     }    
@@ -108,7 +111,7 @@ create.df <- function(first.col.name, srcs) {
     df
 }
 
-build.dfs <- function(word.df, ngram.df, srcs, sample.fraction = 1.0, dir = ".", locale = "en_US") {
+build.dfs <- function(srcs, sample.fraction = 1.0, dir = ".", locale = "en_US") {
     # Populate the word and ngram data frames from files
     # for each of the sources specified.
     
@@ -118,17 +121,18 @@ build.dfs <- function(word.df, ngram.df, srcs, sample.fraction = 1.0, dir = ".",
         print(paste("Reading", path))
         con <- file(path, "r")
         
-        populate.dfs(src, con, sample.fraction, word.df, ngram.df)
+        populate.dfs(src, con, sample.fraction)
         
         close(con)
     }
 }
 
 run <- function(srcs, sample.fraction = 1.0, dir = ".", locale = "en_US") {
-    word.df <- create.df("word", srcs)
-    ngram.df <- create.df("word", srcs)
     
-    build.dfs(word.df, ngram.df, srcs, sample.fraction, dir, locale)
+    build.dfs(srcs, sample.fraction, dir, locale)
     
     print(word.df)
 }
+
+word.df <- create.df("word", srcs)
+ngram.df <- create.df("word", srcs)
