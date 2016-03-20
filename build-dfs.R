@@ -1,6 +1,7 @@
 
 # Setup
 library(stringi)
+library(plyr)
 set.seed(314159)
 
 tokenize.words.only = TRUE
@@ -45,14 +46,14 @@ normalize.token <- function(s) {
     }
 }
 
-populate.word.df <- function(src, word) {
+populate.word.df <- function(src, word, word.df) {
     # Add the word to the word data frame.
     
     i <- which(word.df$word == word)
     
     if (length(i) == 0) {
         # Word not previously found: add row
-        old.len = nrow(word.df$word)
+        old.len = nrow(word.df)
         if (is.null(old.len)) {
             old.len = 0;
         }
@@ -66,24 +67,44 @@ populate.word.df <- function(src, word) {
         # Word previously found: increment
         word.df[i, src] <- word.df[i, src] + 1
     }
+    
+    word.df
 }
 
-populate.ngram.df <- function(src, tokens, i) {
+populate.ngram.df <- function(src, tokens, i, n, df) {
     # Add the appropriate n-gram (tokens i and i-1) to the n-gram data frame.
     
+    if (i >= n) {
+        first <- i - n + 1
+        word <- paste(tokens[first:i], collapse = " ")
+        
+        i <- which(df$word == word)
+        
+        if (length(i) == 0) {
+            # Word not previously found: add row
+            old.len = nrow(df)
+            if (is.null(old.len)) {
+                old.len = 0;
+            }
+            new.len <- old.len + 1
+            current.width <- length(df)
+            
+            df[new.len, 1] <- word
+            df[new.len, 2:current.width] <- integer(current.width - 1)
+            df[new.len, current.width] <- 1
+        } else {
+            # Word previously found: increment
+            df[i, src] <- df[i, src] + 1
+        }
+    }
+    
+    df
 }
 
-populate.dfs <- function(src, con, sample.fraction = 1.0) {
-    # Filter the specified input file, populating data frames with
-    # word and n-gram counts. Use randomly-selected lines in the input
+populate.df <- function(src, con, sample.fraction = 1.0, df, n = 1) {
+    # Filter the specified input file, populating the specified data frame
+    # with word or n-gram counts. Use randomly-selected lines in the input
     # file (with probability sample.fraction). All tokens are upper case.
-    
-    # Add column for source to word and n-gram DF's
-#    word.df  <- cbind(word.df,  integer(length(word.df$word)))
-#    ngram.df <- cbind(ngram.df, integer(length(ngram.df$ngram)))
-#    # Name colum according to source
-#    names(word.df)[length(word.df)] <- src
-#    names(ngram.df)[length(ngram.df)] <- src
     
     # Tokenize randomly selected lines, add tokens to data frames
     while (length(line <- readLines(con, n = 1, warn = FALSE)) > 0) {
@@ -91,14 +112,18 @@ populate.dfs <- function(src, con, sample.fraction = 1.0) {
         
         if (rand == 1) {
             tokens <- tokenize(line)
-            print(paste("adding tokens:", tokens))
             
             for (i in 1:length(tokens)) {
-                populate.word.df(src, tokens[i])
-                populate.ngram.df(src, tokens, i)
+                if (n == 1) {
+                    df <- populate.word.df(src, tokens[i], df)
+                } else {
+                    populate.ngram.df(src, tokens, i, n, df)
+                }
             }
         }
-    }    
+    }
+    
+    df
 }
 
 create.df <- function(first.col.name, srcs) {
@@ -111,8 +136,8 @@ create.df <- function(first.col.name, srcs) {
     df
 }
 
-build.dfs <- function(srcs, sample.fraction = 1.0, dir = ".", locale = "en_US") {
-    # Populate the word and ngram data frames from files
+build.df <- function(srcs, sample.fraction = 1.0, dir = ".", locale = "en_US", df, n = 1) {
+    # Populate the word or ngram data frames from files
     # for each of the sources specified.
     
     for (src in srcs) {
@@ -121,18 +146,66 @@ build.dfs <- function(srcs, sample.fraction = 1.0, dir = ".", locale = "en_US") 
         print(paste("Reading", path))
         con <- file(path, "r")
         
-        populate.dfs(src, con, sample.fraction)
+        df <- populate.df(src, con, sample.fraction, df, n)
         
         close(con)
     }
+
+    # Calculate total uses across all sources, order by total (descending)
+    df$total <- rowSums(df[,2:length(df)])
+    df <- df[order(-df$total), ]
+    
+    # Add cumulative total uses column
+    df <- mutate(df, cumsum = cumsum(total))
+    
+    df
 }
 
-run <- function(srcs, sample.fraction = 1.0, dir = ".", locale = "en_US") {
+how.many.needed <- function(fraction, cumulative, round.up = TRUE) {
+    # How many words do you need to capture some fraction of
+    # all uses?
+    total.tokens <- cumulative[length(cumulative)]
+    most.tokens  <- total.tokens * fraction
+    highest.needed.row <- min(which(cumulativ > most.tokens))
     
-    build.dfs(srcs, sample.fraction, dir, locale)
-    
-    print(word.df)
+    highest.needed.row
 }
 
-word.df <- create.df("word", srcs)
-ngram.df <- create.df("word", srcs)
+run <- function(srcs = srcs, dir = ".", sample.fraction = 1.0, locale = "en_US") {
+    # Initialize word and n-gram data frames
+    word.df <- create.df("word", srcs)
+    ngram.df <- create.df("word", srcs)
+    
+    # Build data frames
+    word.df <- build.df(srcs, sample.fraction, dir, locale, word.df, 1)
+#    ngram.df <- build.df(srcs, sample.fraction, dir, locale, ngram.df, 2)
+    
+    coverage.fractions = c(0.5, 0.9, 0.95, 0.99, 0.999)
+    needed.words <- lapply(coverage.fractions, FUN = (how.many.needed), cumulative = word.df$cumsum)
+    
+    
+    head(word.df)
+    max.y.rowindex <- max(floor(length(word.df$word) / 100), 1)
+    max.y <- word.df[max.y.rowindex, "total"]
+    plot(word.df[,2], type = "l", ylim = c(0, max.y), col = 1)
+    for (i in 3:length(word.df)) {
+        lines(word.df[,i], col = i - 1)
+    }
+    
+    total.tokens <- word.df[length(word.df$word), "cumsum"]
+    most.tokens  <- total.tokens * 0.90
+    highest.needed.row <- min(which(word.df$cumsum > most.tokens))
+    print(paste("need:", highest.needed.row))
+    word.df
+    #    print(word.df)
+    
+#    barplot(table(word.df), names.arg = word.df$word)
+#    plot(word.df$test ~ word.df$word)
+    #    plot(ngram.df)
+    
+#    print(word.df)
+#    print(ngram.df)
+}
+
+srcs <- c("test")
+
