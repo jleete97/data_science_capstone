@@ -11,29 +11,63 @@ text data provided for the Coursera Data Science Capstone project.
 
 ## Analysis
 
+With each input file, we:
+
+* tokenize the data into words and 2-grams; and,
+* count the distinct uses of each word / 2-gram in each file.
+
+For the aggregated data, we:
+
+* total the uses for each word or 2-gram;
+* sort the words or 2-grams, most commonly-used first;
+* plot the counts; and,
+* determine how many we need to meet various fractions of word usage.
+
 ### Configuration
 
 We configure our analysis with the following parameters:
 
-```{r analysisParameters, echo=TRUE}
+```{r analysisParameters, echo=TRUE,message=FALSE, warning=FALSE}
+# Use just words, or allow numbers and currency as tokens?
 tokenize.words.only = TRUE
-sample.fraction = 0.001
 
-data.dir = "data"
+# Data file selection parameters
+data.dir = "~/r/capstone/data"
 locale = "en_US"
 
-data.sources <- c("test")
+# What fractions of word coverage to analyze for
+coverage.fractions = c(0.5, 0.9, 0.95, 0.98, 0.99, 0.999)
+# Fraction of word uses (vs. distinct words) we want to find
+desired.coverage.fraction = 0.98
+
+# Use test data, or "real" data, as below?
+test.configuration = FALSE
+
+# Specify data files and fraction of data to sample for analysis
+if (test.configuration) {
+    data.sources <- c("blogtest", "newstest", "twittertest")
+    sample.fraction = 1.0
+} else {
+    data.sources <- c("blogs", "news", "twitter")
+    sample.fraction = 0.00002
+}
 ```
 
-Their use is explained below.
-
-```{r functionDeclarations, echo=FALSE, message=FALSE}
-
+```{r setup, echo=TRUE,message=FALSE, warning=FALSE}
 # Setup
 library(stringi)
 library(plyr)
 set.seed(314159)
+```
 
+<br>
+```{r testWarning, echo=FALSE,message=FALSE, warning=FALSE, results='asis'}
+if (test.configuration) {
+    print("## WARNING: THIS IS A TEST CONFIGURATION ##")
+}
+```
+
+```{r functionDeclarations, echo=FALSE,message=FALSE, warning=FALSE}
 # Regular expression denoting a word or equivalent that we want to treat as a single token.
 token.re <- (
     function() {
@@ -58,7 +92,6 @@ tokenize <- function(line) {
     # returns: a character vector populated with tokens.
     tokens <- stri_match_all(line, regex = token.re, extended = TRUE)
     tokens <- lapply(tokens[[1]], normalize.token)
-#    tokens <- paste(tokens, collapse = " ")
     
     tokens
 }
@@ -145,7 +178,7 @@ populate.df <- function(src, con, sample.fraction = 1.0, df, n = 1) {
                 if (n == 1) {
                     df <- populate.word.df(src, tokens[i], df)
                 } else {
-                    populate.ngram.df(src, tokens, i, n, df)
+                    df <- populate.ngram.df(src, tokens, i, n, df)
                 }
             }
         }
@@ -204,40 +237,32 @@ how.many.needed <- function(fraction, cumulative, round.up = TRUE) {
     # all uses?
     total.tokens <- cumulative[length(cumulative)]
     most.tokens  <- total.tokens * fraction
-    highest.needed.row <- min(which(cumulativ > most.tokens))
+    highest.needed.row <- min(which(cumulative > most.tokens))
     
     highest.needed.row
 }
 ```
 
-We do the following with each input file:
-
-* Tokenize the data into words and 2-grams
-* Count the distinct uses of each word / 2-gram in each file
-
-We then total the uses for each word or 2-gram, plot the counts, and determine
-how many we need to meet various fractions of word usage.
-
 ### Tokenization
 
 Our tokenization function uses the following regular expression:
 
-```{r showTokenRegex}
+```{r showTokenRegex, echo=FALSE,message=FALSE, warning=FALSE}
 token.re
 ```
 
 This expression scans for
 ```r ifelse(tokenize.words.only, "words only", "numbers, currency and words")```.
-A word is considered a contraction, and counted as a single token, if it
-includes an apostrophe followed by more letters; this pattern may repeat, as
-in "shouldn't've." A word ending in a period is considered an abbrevation, and
-the period included as part of the token, if it has no vowels. (This is somewhat
-arbitrary, but covers cases such as "Ms." and "St.")
+Contractions are allowed, and counted as single tokens, if they
+include an apostrophe followed by more letters; this pattern may repeat, as
+in "shouldn't've." If a word ends in a period, it is considered an abbrevation
+if it has no vowels; the period is included as part of the token. (This is
+somewhat arbitrary, but covers cases such as "Ms." and "Rd.")
 
 We do _not_ scan for entities such as "New York," as entity recognition is a
-difficult field in itself, and simple efforts are quite error-prone.
+complex field in itself, and simple efforts are quite error-prone.
 
-For this analysis, we have scanned and tokenized about ```r sample.fraction```
+For this analysis, we have scanned and tokenized about ```r sample.fraction * 100```%
 of the lines in each file, selected randomly.
 
 ### Counting
@@ -262,74 +287,100 @@ This section presents basic statistics about the data set:
 
 First, let's find basic statistics about each file.
 
-Line counts:
+Line counts (for data directory "```r data.dir```", locale "```r locale```"):
 
-```{r countLines, echo=TRUE}
-sapply(srcs, FUN = line.count, dir = data.dir, locale = locale)
+```{r countLines, echo=FALSE,message=FALSE, warning=FALSE}
+sapply(data.sources, FUN = line.count, dir = data.dir, locale = locale)
 ```
 
 For word counts, we go ahead and perform the full tokenization, which we can
 sum the results of:
 
-```{r runAnalysis, echo=TRUE}
+```{r runAnalysis, echo=TRUE,message=FALSE, warning=FALSE}
 # Initialize single-word and n-gram data frames
 word.df <- create.df("word", data.sources)
 ngram.df <- create.df("word", data.sources)
 
 # Build data frames
-word.df <- build.df(data.sources, sample.fraction, data.dir, locale, word.df, 1)
-#ngram.df <- build.df(srcs, sample.fraction, dir, locale, ngram.df, 2)
+word.df  <- build.df(data.sources, sample.fraction, data.dir, locale, word.df, 1)
+ngram.df <- build.df(data.sources, sample.fraction, data.dir, locale, ngram.df, 2)
 ```
 
 Total word (token) counts:
 
-```{r totalWordCounts, echo=TRUE}
-sapply(word.df[,srcs], FUN = sum, simplify = "array")
+```{r totalWordCounts, echo=FALSE,message=FALSE, warning=FALSE}
+sapply(word.df[,data.sources], FUN = sum, simplify = "array")
 ```
 
-The combined sources include ```r length(word.df[1])``` distinct words.
+The combined sources include ```r length(word.df$word)``` distinct words.
+
+Let's take a quick glance at our data, just as a sanity check. First the
+single-word data, then the 2-gram data:
+
+```{r illustrateData, echo=FALSE,message=FALSE, warning=FALSE}
+head(word.df)
+head(ngram.df)
+```
 
 The following plots show clearly that most text comprises a surprisingly small
 number of words. The plots have been rescaled to show a bit more detail than
 would be apparent if the highest word frequencies were on the plot.
 
-```{r plotWordAnalysis, echo=FALSE, message=FALSE, fig.align='center', fig.height=2, fig.width=6}
+```{r plotWordAnalysis, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center', fig.height=4, fig.width=8}
 max.y.rowindex <- max(floor(length(word.df$word) / 100), 1)
 max.y <- word.df[max.y.rowindex, "total"]
 
-par(mfrow = c(1, 2))
+par(mfrow = c(1, 2), mai=c(1, 1, 0.2, 0.5))
 
-plot(word.df[,2], type = "l", ylim = c(0, max.y), col = 1, ylab = "Word Use Count")
-for (i in 3:length(word.df)) {
+plot(word.df[,"total"], type = "l", ylim = c(0, max.y), col = 1, ylab = "Word Use Count")
+for (i in 2:(length(word.df) - 1)) {
     lines(word.df[,i], col = i - 1)
 }
 
 max.y.rowindex <- max(floor(length(ngram.df$word) / 100), 1)
 max.y <- ngram.df[max.y.rowindex, "total"]
 
-plot(ngram.df[,2], type = "l", ylim = c(0, max.y), col = 1, ylab = "2-Gram Use Count")
-for (i in 3:length(ngram.df)) {
-    lines(ngram.df[,i], col = i - 1)
+plot(ngram.df[,"total"], type = "l", ylim = c(0, max.y), col = 1, ylab = "2-Gram Use Count")
+for (i in 2:(length(ngram.df) - 1)) {
+    lines(ngram.df[,i], col = i)
 }
 ```
+
+The top line is the total number of uses from all sources. One can see that
+the various data sources have generally similar word frequencies.
 
 The fraction of words needed to cover a given number of uses is:
 
-```{r coverage}
-total.tokens <- word.df[length(word.df$word), "cumsum"]
-most.tokens  <- total.tokens * 0.90
-highest.needed.row <- min(which(word.df$cumsum > most.tokens))
+```{r coverage, echo=FALSE,message=FALSE, warning=FALSE}
+distinct.words = length(word.df$word)
 
-print(paste("need:", highest.needed.row))
-word.df
-}
+needed.words <- sapply(coverage.fractions, FUN = how.many.needed, cumulative = word.df$cumsum, simplify = "array")
+
+coverage = data.frame(coverage.fraction = coverage.fractions, needed.words = needed.words)
+coverage
 ```
 
-```{r coverage, echo=TRUE}
-distinct.words = length(word.df[1])
+## Conclusion
 
-coverage.fractions = c(0.5, 0.9, 0.95, 0.99, 0.999)
-needed.words <- lapply(coverage.fractions, FUN = (how.many.needed), cumulative = word.df$cumsum)
+With our simple tokenization scheme, we found ```r length(word.df$word)```
+distinct words, of which we needed
+```r needed.words[which(abs(coverage.fractions - desired.coverage.fraction) < 0.00001)]```
+to capture ```r desired.coverage.fraction * 100.0```% of the words. This information
+will help us optimize our data set for our predictive model.
 
-needed.words
+<br><br><br><br>
+
+## Appendix (Code)
+
+The functions used in the analysis above are defined as follows:
+```{r showFunctions, echo=TRUE,message=FALSE, warning=FALSE}
+print(tokenize)
+print(normalize.token)
+print(populate.word.df)
+print(populate.ngram.df)
+print(populate.df)
+print(create.df)
+print(build.df)
+print(line.count)
+print(how.many.needed)
 ```
