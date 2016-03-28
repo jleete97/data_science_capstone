@@ -60,6 +60,7 @@ predict <- function(root, words) {
 match <- function(node, words) {
     
     last.word <- words[length(words)]
+    print(paste("last: '", last.word, "', of all: ", words, sep = ""))
     
     if (exists(last.word, envir = node, inherits = FALSE)) {
         next.value <- get(last.word, envir = node)
