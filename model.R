@@ -1,9 +1,11 @@
 library(stringi)
 
+# Beginning of Line indicator; placed at head of token string
 bol <- "XXXXXX"
 
 ################### API ###################
 
+# Display a JSON printout of the environment.
 printenv <- function(envt, depth = 0) {
     indent <- stri_dup("  ", depth)
     
@@ -22,6 +24,15 @@ printenv <- function(envt, depth = 0) {
     }
 }
 
+# Build up a "tree" (nested Environments aka hashmaps) of tokens and frequencies.
+# This tree is used in predicting next tokens, given a string of tokens.
+# The top level keys are final tokens.
+# They point to nested nodes (Environments, hashmaps, whatever) that map
+# previous tokens to further nested maps, as deeply as the tree was set up.
+# The leaf nodes map keys (tokens) to frequencies / counts.
+# So, given a series of tokens, walk it backwards from the root node down.
+# The most common leaf value (mapping a token to a number, not another node)
+# represents your prediction for the next token, given the series.
 build.tree <- function(root, token.vector, max.depth = 3) {
     token.vector <- append(token.vector, bol, 0) # put BOL token at front
     
@@ -33,6 +44,8 @@ build.tree <- function(root, token.vector, max.depth = 3) {
     root
 }
 
+# Predict the next token, given a tree that incorporates our learned model
+# and a series of tokens.
 predict <- function(root, words) {
     words <- append(words, bol, 0) # put BOL at front
     
@@ -41,6 +54,9 @@ predict <- function(root, words) {
     word
 }
 
+################# INTERNAL ################
+
+# Find the most common next token for the series of tokens.
 match <- function(node, words) {
     
     last.word <- words[length(words)]
@@ -59,8 +75,8 @@ match <- function(node, words) {
     }
 }
 
-################# INTERNAL ################
-
+# Find the most common token in the arbitrarily-nested tree.
+# Sums the leaf nodes into a map (Environment).
 most.common.in.tree <- function(node, map = NULL) {
     
     if (is.null(map)) {
@@ -75,8 +91,10 @@ most.common.in.tree <- function(node, map = NULL) {
     commonest.token
 }
 
-# Find element in flat map that maps to highest numeric value.
-# This function assumes that the map is of this form.
+# Find element in flat map (un-nested Environment) that maps to highest
+# numeric value. This function assumes that the map is of this form.
+# (A little deviation will probably work -- it tries to ignore things
+# that don't fit.)
 most.common.in.map <- function(map) {
     # Find most common
     commonest.token <- NULL
@@ -120,6 +138,9 @@ add.up.token.occurrences <- function(node, map) {
     }
 }
 
+# Part of the model learning phase: adds a sequence of tokens to
+# the tree, to a maximum specified depth (len).
+# 
 add.to.tree <- function(pod, token.vector, index, len, token) {
     
     if (index > 0 && len > 0) {
@@ -138,8 +159,10 @@ add.to.tree <- function(pod, token.vector, index, len, token) {
     }
 }
 
+# Ensure that the specified node (Environment) has a child node
+# with the specified name. If not, a new Environment is created.
 ensure.child <- function(pod, name) {
-    print(paste("checking for ", name, sep=""))
+    print(paste("checking for ", name, sep = ""))
     if (!exists(name, envir = pod, inherits = FALSE)) {
         print(paste("creating", name))
         # Create, add new child
@@ -148,24 +171,4 @@ ensure.child <- function(pod, name) {
     }
     
     get(name, envir = pod)
-}
-
-add.up <- function(envt) {
-    total <- 0
-    
-    for (x in ls(envt)) {
-        if (is.token.child(x)) {
-            total <- total + add.up(get(x, envir = envt))
-        }
-    }
-    
-    if (total == 0) {
-        total <- get(cnd, envir = envt)
-    }
-    
-    total
-}
-
-is.token.child <- function(name) {
-    !is.null(name) && (name != bol)
 }
