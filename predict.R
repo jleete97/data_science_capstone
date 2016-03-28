@@ -18,7 +18,8 @@ source("model.R")
 
 tokenize <- function() {
     remove.token.files(token.dir)
-    filter(c("test", "test1", "test2"), sample.fraction = 1.0, n = 3)
+#    filter(c("test", "test1", "test2"), sample.fraction = 1.0, n = 3)
+    filter(c("blogtest", "newstest", "twittertest"), sample.fraction = 1.0, n = 3)
 }
 
 add.to.model <- function(con, model.tree, depth = 3) {
@@ -35,7 +36,6 @@ build.model <- function(token.path) {
     
     for (src in token.files) {
         src.path <- paste(token.path, src, sep = "/")
-        print(paste("Reading '", src.path, "'...", sep = ""))
         
         con <- file(src.path, "r")
         add.to.model(con, model)

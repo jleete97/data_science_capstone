@@ -60,7 +60,6 @@ predict <- function(root, words) {
 match <- function(node, words) {
     
     last.word <- words[length(words)]
-    print(paste("last: '", last.word, "', of all: ", words, sep = ""))
     
     if (exists(last.word, envir = node, inherits = FALSE)) {
         next.value <- get(last.word, envir = node)
@@ -118,22 +117,17 @@ most.common.in.map <- function(map) {
 # Sum up occurrences of all tokens in this subtree
 add.up.token.occurrences <- function(node, map) {
     for (x in ls(node)) {
-        
-        print(paste("  key: ", x))
         val <- get(x, envir = node)
         
         if (is.numeric(val)) {
-            print(paste("adding", val))
             if (!exists(x, envir = map, inherits = FALSE)) {
                 assign(x, val, envir = map)
             } else {
                 count <- get(x, envir = map)
-                print(paste("    to", count))
                 count <- count + val
                 assign(x, count, envir = map)
             }
         } else {
-            print("---- recursing...")
             add.up.token.occurrences(val, map)
         }
     }
@@ -146,7 +140,6 @@ add.to.tree <- function(pod, token.vector, index, len, token) {
     
     if (index > 0 && len > 0) {
         #todo allow stopwords only as immediate prececessors
-        print(paste("index = ", index, ", len = ", len, sep=""))
         child <- ensure.child(pod, token.vector[index])
         add.to.tree(child, token.vector, index - 1, len - 1, token)
     }
@@ -163,9 +156,7 @@ add.to.tree <- function(pod, token.vector, index, len, token) {
 # Ensure that the specified node (Environment) has a child node
 # with the specified name. If not, a new Environment is created.
 ensure.child <- function(pod, name) {
-    print(paste("checking for ", name, sep = ""))
     if (!exists(name, envir = pod, inherits = FALSE)) {
-        print(paste("creating", name))
         # Create, add new child
         child <- new.env()
         assign(name, child, envir = pod)

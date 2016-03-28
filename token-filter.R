@@ -52,12 +52,10 @@ normalize.token <- function(s) {
 }
 
 remove.token.files <- function(dir) {
-    print(paste("Checking", dir))
     files <- list.files(path = dir, pattern = "\\.txt$")
     
     for (file in files) {
         path <- paste(dir, file, sep = "/")
-        print(paste("Removing", path))
         file.remove(path)
     }
 }
