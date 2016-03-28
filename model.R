@@ -6,13 +6,19 @@ cnt <- "_count"
 ################### API ###################
 
 printenv <- function(envt, depth = 0) {
-    count <- ifelse(exists(cnt, envir = envt, inherits = FALSE), get(cnt, envir = envt), 0)
     indent <- stri_dup("  ", depth)
-    print(paste(indent, "-", ifelse((count > 0), count, "")))
+    
     for (x in ls(envt)) {
-        if (is.token.child(x)) {
-            print(paste(x, ": ", sep = ""))
+        val <- get(x, envir = envt)
+        
+        if (is.numeric(val) || is.character(val)) {
+            if (! (x == cnt && val == 0)) {
+                print(paste(indent, x, " : ", val, sep = ""))
+            }
+        } else {
+            print(paste(indent, x, " : {", sep = ""))
             printenv(get(x, envir = envt), depth = depth + 1)
+            print(paste(indent, "}", sep = ""))
         }
     }
 }
@@ -55,17 +61,22 @@ match <- function(node, words) {
 }
 
 ################# INTERNAL ################
+
+most.common <- function(node, map = NULL) {
     
-most.common <- function(node, map = new.env()) {
-    
+    if (is.null(map)) {
+        map <- new.env()
+    }
     # Convert to map token : integer (count)
-    map <- add.up.token.occurrences(node, map)
+    add.up.token.occurrences(node, map)
     
     # Find most common
     commonest.token <- NULL
     highest <- 0
     
-    for (token in ls(map)) {
+    for (token in ls(node)) {
+        if (token == cnt || x == bol) next
+        
         count <- get(token, envir = map)
         if (count > highest) {
             highest <- count
@@ -79,6 +90,8 @@ most.common <- function(node, map = new.env()) {
 # Sum up occurrences of all tokens in this subtree
 add.up.token.occurrences <- function(node, map) {
     for (x in ls(node)) {
+        if (x == cnt || x == bol) next
+        
         print(paste("  key: ", x))
         val <- get(x, envir = node)
         
@@ -147,10 +160,5 @@ add.up <- function(envt) {
 }
 
 is.token.child <- function(name) {
-    !is.null(name) && !(substring(name, 0, 1) == bol) && !(substring(name, 0, 1) == cnt)
-}
-
-# Identify special beginning of line token, a single space
-is.bol.token <- function(token) {
-    token == " "
+    !is.null(name) && (name != bol) && (name != cnt)
 }
