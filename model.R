@@ -55,13 +55,13 @@ match <- function(node, words) {
             match(next.value, remaining.words)
         }
     } else {
-        most.common(node)
+        most.common.in.tree(node)
     }
 }
 
 ################# INTERNAL ################
 
-most.common <- function(node, map = NULL) {
+most.common.in.tree <- function(node, map = NULL) {
     
     if (is.null(map)) {
         map <- new.env()
@@ -70,16 +70,26 @@ most.common <- function(node, map = NULL) {
     add.up.token.occurrences(node, map)
     
     # Find most common
+    commonest.token <- most.common.in.map(map)
+    
+    commonest.token
+}
+
+# Find element in flat map that maps to highest numeric value.
+# This function assumes that the map is of this form.
+most.common.in.map <- function(map) {
+    # Find most common
     commonest.token <- NULL
     highest <- 0
     
-    for (token in ls(node)) {
-        if (token == bol) next
-        
-        count <- get(token, envir = map)
-        if (count > highest) {
-            highest <- count
-            commonest.token <- token
+    for (token in ls(map)) {
+        if ((token != bol) && exists(token, envir = map, inherits = FALSE)) {
+            count <- get(token, envir = map)
+            
+            if (is.numeric(count) && (count > highest)) {
+                highest <- count
+                commonest.token <- token
+            }
         }
     }
     
