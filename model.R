@@ -1,7 +1,6 @@
 library(stringi)
 
 bol <- "XXXXXX"
-cnt <- "_count"
 
 ################### API ###################
 
@@ -12,7 +11,7 @@ printenv <- function(envt, depth = 0) {
         val <- get(x, envir = envt)
         
         if (is.numeric(val) || is.character(val)) {
-            if (! (x == cnt && val == 0)) {
+            if (val != 0) {
                 print(paste(indent, x, " : ", val, sep = ""))
             }
         } else {
@@ -75,7 +74,7 @@ most.common <- function(node, map = NULL) {
     highest <- 0
     
     for (token in ls(node)) {
-        if (token == cnt || x == bol) next
+        if (token == bol) next
         
         count <- get(token, envir = map)
         if (count > highest) {
@@ -90,7 +89,6 @@ most.common <- function(node, map = NULL) {
 # Sum up occurrences of all tokens in this subtree
 add.up.token.occurrences <- function(node, map) {
     for (x in ls(node)) {
-        if (x == cnt || x == bol) next
         
         print(paste("  key: ", x))
         val <- get(x, envir = node)
@@ -136,7 +134,6 @@ ensure.child <- function(pod, name) {
         print(paste("creating", name))
         # Create, add new child
         child <- new.env()
-        assign(cnt, 0, envir = pod)
         assign(name, child, envir = pod)
     }
     
@@ -160,5 +157,5 @@ add.up <- function(envt) {
 }
 
 is.token.child <- function(name) {
-    !is.null(name) && (name != bol) && (name != cnt)
+    !is.null(name) && (name != bol)
 }
