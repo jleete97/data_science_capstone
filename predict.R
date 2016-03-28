@@ -19,7 +19,8 @@ source("model.R")
 tokenize <- function() {
     remove.token.files(token.dir)
 #    filter(c("test", "test1", "test2"), sample.fraction = 1.0, n = 3)
-    filter(c("blogtest", "newstest", "twittertest"), sample.fraction = 1.0, n = 3)
+#    filter(c("blogtest", "newstest", "twittertest"), sample.fraction = 1.0, n = 3)
+    filter(c("blogs", "news", "twitter"), sample.fraction = 0.01, n = 3)
 }
 
 add.to.model <- function(con, model.tree, depth = 3) {
