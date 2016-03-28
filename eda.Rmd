@@ -46,10 +46,11 @@ test.configuration = FALSE
 # Specify data files and fraction of data to sample for analysis
 if (test.configuration) {
     data.sources <- c("blogtest", "newstest", "twittertest")
+#    data.sources <- c("test", "test1")
     sample.fraction = 1.0
 } else {
     data.sources <- c("blogs", "news", "twitter")
-    sample.fraction = 0.00002
+    sample.fraction = 0.0002
 }
 ```
 
@@ -109,7 +110,7 @@ normalize.token <- function(s) {
 
 populate.word.df <- function(src, word, word.df) {
     # Add the word to the word data frame.
-    
+
     i <- which(word.df$word == word)
     
     if (length(i) == 0) {
@@ -123,7 +124,7 @@ populate.word.df <- function(src, word, word.df) {
         
         word.df[new.len, 1] <- word
         word.df[new.len, 2:current.width] <- integer(current.width - 1)
-        word.df[new.len, current.width] <- 1
+        word.df[new.len, src] <- 1
     } else {
         # Word previously found: increment
         word.df[i, src] <- word.df[i, src] + 1
@@ -308,7 +309,7 @@ ngram.df <- build.df(data.sources, sample.fraction, data.dir, locale, ngram.df, 
 
 Total word (token) counts:
 
-```{r totalWordCounts, echo=FALSE,message=FALSE, warning=FALSE}
+```{r totalWordCounts, echo=FALSE, message=FALSE, warning=FALSE}
 sapply(word.df[,data.sources], FUN = sum, simplify = "array")
 ```
 
@@ -327,7 +328,7 @@ number of words. The plots have been rescaled to show a bit more detail than
 would be apparent if the highest word frequencies were on the plot.
 
 ```{r plotWordAnalysis, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center', fig.height=4, fig.width=8}
-max.y.rowindex <- max(floor(length(word.df$word) / 100), 1)
+max.y.rowindex <- max(floor(length(word.df$word) / 50), 1)
 max.y <- word.df[max.y.rowindex, "total"]
 
 par(mfrow = c(1, 2), mai=c(1, 1, 0.2, 0.5))
