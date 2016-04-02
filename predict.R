@@ -20,7 +20,7 @@ tokenize <- function() {
     remove.token.files(token.dir)
 #    filter(c("test", "test1", "test2"), sample.fraction = 1.0, n = 3)
 #    filter(c("blogtest", "newstest", "twittertest"), sample.fraction = 1.0, n = 3)
-    filter(c("blogs", "news", "twitter"), sample.fraction = 0.01, n = 3)
+    filter(c("blogs", "news", "twitter"), sample.fraction = 0.1)
 }
 
 add.to.model <- function(con, model.tree, depth = 3) {
@@ -30,7 +30,7 @@ add.to.model <- function(con, model.tree, depth = 3) {
     }
 }
 
-build.model <- function(token.path) {
+build.model <- function(token.path, depth = 3) {
     token.files <- list.files(path = token.path, pattern = "\\.txt$")
     
     model <- new.env()
@@ -39,7 +39,7 @@ build.model <- function(token.path) {
         src.path <- paste(token.path, src, sep = "/")
         
         con <- file(src.path, "r")
-        add.to.model(con, model)
+        add.to.model(con, model, depth = depth)
         close(con)
     }
     
