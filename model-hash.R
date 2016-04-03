@@ -103,16 +103,17 @@ most.common <- function(hash) {
 add.to.map <- function(hash, key, value) {
     
     # Add a new submap for the given key, if needed.
-    if (!has.key(key, hash)[[key]]) {
+    submap <- hash[[key]]
+    
+    if (is.null(submap)) {
         submap <- hash()
         .set(hash, key, submap)
-    } else {
-        submap <- hash[[key]]
     }
     
     # Initialize or increment the counter for the word in the submap.
-    if (has.key(value, submap)[[value]]) {
-        count <- submap[[value]]
+    count <- submap[[value]]
+    
+    if (!is.null(count)) {
         .set(submap, value, (count + 1))
     } else {
         .set(submap, value, 1)
