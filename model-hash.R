@@ -1,5 +1,7 @@
 library(stringi)
 library(hash)
+library(tm)
+
 
 # Predict the next token, given a tree that incorporates our learned model
 # and a series of tokens.
@@ -15,8 +17,7 @@ trim.model <- function(hash) {
         submap <- hash[[key]]
         
         if (is.hash(submap)) {
-            most.common.next.word <- most.common(submap)
-            .set(hash, key, most.common.next.word)
+            hash[[key]] <- most.common(submap)
         }
     }
 }
@@ -107,16 +108,16 @@ add.to.map <- function(hash, key, value) {
     
     if (is.null(submap)) {
         submap <- hash()
-        .set(hash, key, submap)
+        hash[[key]] <- submap
     }
     
     # Initialize or increment the counter for the word in the submap.
     count <- submap[[value]]
     
     if (!is.null(count)) {
-        .set(submap, value, (count + 1))
+        submap[[value]] <- count + 1
     } else {
-        .set(submap, value, 1)
+        submap[[value]] <- 1
     }
 }
 
@@ -127,20 +128,44 @@ add.line.to.map <- function(hash, token.vector, n = 3) {
         return
     }
     
+    # Remove stopwords
+    # This is a simplified handler: just removing stopwords
+    # isn't the best prediction model, but it'll do for our
+    # initial cases.
+    trimmed.token.vector <- subset(token.vector, sapply(token.vector, not.stopword, simplify = "array"))
+    if (length(trimmed.token.vector) == 0) {
+        return
+    }
+    n <- min(n, length(token.vector))
+    
     # Add first token with blank key
-    add.to.map(hash, " ", token.vector[[1]])
+    tryCatch({
+        add.to.map(hash, " ", trimmed.token.vector[[1]])
+    }, warning = function(w) {
+        print(paste("warning: unable to add ", token.vector, ", trimmed =", trimmed.token.vector, w))
+        return
+    }, error = function(e) {
+        print(paste("error: unable to add ", token.vector, ", trimmed =", trimmed.token.vector, e))
+        return
+    })
     
     # Add remaining elements as n-grams, where 1 <= n <= (function parameter n)
-    if (length(token.vector) > 1) {
-        for (token.index in 2:length(token.vector)) {
+    if (length(trimmed.token.vector) > 1) {
+        for (token.index in 2:length(trimmed.token.vector)) {
             last.gram.index <- token.index - 1
             
             for (start.index in max(token.index - n, 1) : last.gram.index) {
-                key <- paste(token.vector[start.index : last.gram.index], collapse = " ")
-                add.to.map(hash, key, token.vector[token.index])
+                key <- paste(trimmed.token.vector[start.index : last.gram.index], collapse = " ")
+                add.to.map(hash, key, trimmed.token.vector[token.index])
             }
         }
     }
+}
+
+stop.words <- toupper(stopwords())
+
+not.stopword <- function(word) {
+    !(word %in% stop.words)
 }
 
 # Add a tokenized file to the model (hash) we're building.
