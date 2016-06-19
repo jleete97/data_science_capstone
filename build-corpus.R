@@ -11,7 +11,12 @@ library(wordcloud)
 # Build a clean tm Corpus from text inputs
 # 
 BuildCleanCorpus <- function(dir.name = "short") {
+    
     corpus <- ReadCorpus(dir.name)
+    corpus <- SplitCorpusIntoSentences(corpus)
+    corpus <- CleanCorpus(corpus)
+    
+    corpus
 }
 
 # Build a tm Corpus from all text files in the specified subdirectory of
