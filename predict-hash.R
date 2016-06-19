@@ -33,13 +33,26 @@ build.tokens <- function(source.dir, output.file = "tokens.txt", sample.rate = 1
 build.model <- function(token.file = "tokens.txt", n = 3) {
     model <- hash()
     
+    start.time <- Sys.time()
     con <- file(token.file, "r")
     add.file.to.model(con, model, n)
     close(con)
+    file.end.time <- Sys.time()
     
     trim.model(model)
+    end.time <- Sys.time()
+    
+    print(sprintf("Processing file: %1.3f sec, trimming: %1.3f sec.",
+                  (file.end.time - start.time),
+                  (end.time - file.end.time)))
     
     model
+}
+
+read.model <- function(model.file = "model.txt") {
+    m <- read.model.file(model.file)
+    
+    m
 }
 
 # Predict the next word for each sentence in the vector sentences,

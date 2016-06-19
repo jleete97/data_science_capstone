@@ -178,3 +178,28 @@ add.file.to.model <- function(con, hash, n = 3) {
         }
     }
 }
+
+# Read a (trimmed) model from a file.
+read.model.file <- function(model.file) {
+    model <- hash()
+    start.time <- Sys.time()
+    
+    con <- file(model.file, "r")
+    while (length(lines <- readLines(con, n = 1000, warn = FALSE)) > 0) {
+        for (i in 1:length(lines)) {
+            parts <- strsplit(lines[[i]], " -> ")[[1]]
+            if (length(parts) == 2) {
+                key <- parts[[1]]
+                val <- parts[[2]]
+                model[[key]] <- val
+            }
+        }
+    }
+    close(con)
+    
+    end.time <- Sys.time()
+    print(sprintf("Building model from file: %1.3f sec.",
+                  (end.time - start.time)))
+    
+    model
+}
