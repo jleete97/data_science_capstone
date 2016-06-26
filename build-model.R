@@ -6,9 +6,6 @@
 library(tm)
 library(hash)
 
-# Number of words to use in prediction model
-gram.length = 3
-
 # Segment a text vector. See SegmentDataFrame.
 # 
 SegmentTextVector <- function(text.vector, gram.length, min.count) {
@@ -74,7 +71,7 @@ Predict <- function(hash.model, words) {
     input.gram <- NormalizeInput(words, gram.size)
     
     if (has.key(input.gram, hash.model)) {
-        hash.model[input.gram]
+        hash.model[[input.gram]]
     } else {
         ""
     }

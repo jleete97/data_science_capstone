@@ -13,16 +13,13 @@ library(dplyr)
 library(RColorBrewer)
 library(hash)
 
-# Default base directory for scanning text input.
-base.dir <- "~/r/capstone/data"
-
 # Build a clean tm Corpus from text inputs.
 #
 # dir.name: the name of the directory, relative to the base directory, to
 #           scan for text files
 # base.dir: the base directory
 #
-BuildCleanCorpus <- function(dir.name = "short", base.dir = base.dir) {
+BuildCleanCorpus <- function(dir.name, base.dir = "~/r/capstone/data") {
     require(tm)
     
     corpus <- ReadCorpus(dir.name, base.dir)
@@ -36,13 +33,14 @@ BuildCleanCorpus <- function(dir.name = "short", base.dir = base.dir) {
 # a standard base directory.
 # 
 # dir.name: the name of the directory, relative to the base directory, to
-#           scan for text files
+#           scan for text files; we append "/split", using preprocessed files
+#           that are already split into sentences
 # base.dir: the base directory
 #
-ReadCorpus <- function(dir.name, base.dir = base.dir) {
+ReadCorpus <- function(dir.name, base.dir) {
     require(tm)
     
-    dir      <- paste(c(base.dir, dir.name), collapse = "/")
+    dir      <- paste(c(base.dir, dir.name, "split"), collapse = "/")
     print(paste(c("Building corpus in ", dir, "at", Sys.time()), collapse = " "))
     
     src       <- DirSource(directory = dir, encoding = "UTF-8", mode = "text")
@@ -77,6 +75,9 @@ CleanCorpus <- function(c) {
 }
 
 # Split a Corpus into one document per sentence.
+# 
+# LL: Better handled by Java pre-processor: this takes a long time for largish
+# corpora.
 # 
 # corpus: The Corpus to split into TextDocuments of one sentence each.
 # 
