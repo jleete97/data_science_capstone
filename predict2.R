@@ -11,26 +11,17 @@
 source('build-corpus.R')
 source('build-model.R')
 
+library(tm)
 library(RWeka)
 
 # Default directory.
-if (!exists("data.dir")) { data.dir <- "short" }
+if (!exists("data.dir")) { data.dir <- "full" }
 # Default n-gram length.
 if (!exists("gram.size")) { gram.size <- 3 }
+gram.length <- gram.size
 
-corpus <- BuildCleanCorpus(data.dir, "~/r/capstone/data")
-
-ModelTokenizer <- function(doc) {
-    require(RWeka)
-    NGramTokenizer(doc, Weka_control(min = (gram.size + 1), max = (gram.size + 1)))
-}
-
-term.doc.matrix <- TermDocumentMatrix(corpus, control = list(tokenize = ModelTokenizer))
-# ngram.vector <- NGramTokenizer(corpus[[1]], Weka_control(min = (gram.size + 1), max = (gram.size + 1)))
-
-split.ngram.df <- SegmentTextVector(ngram.vector, gram.size, 1)
-
-model <- BuildHashModel(split.ngram.df)
+corpus <- BuildCleanCorpus(data.dir, "~/r/capstone/data", split = TRUE)
+model <- BuildHashModel(corpus)
 
 Predict(model, "The guy in front of me just bought a pound of bacon, a bouquet, and a case of")
 Predict(model, "You're the reason why I smile everyday. Can you follow me please? It would mean the")

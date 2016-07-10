@@ -19,10 +19,10 @@ library(hash)
 #           scan for text files
 # base.dir: the base directory
 #
-BuildCleanCorpus <- function(dir.name, base.dir = "~/r/capstone/data") {
+BuildCleanCorpus <- function(dir.name = "short", base.dir = "~/r/capstone/data", split = TRUE) {
     require(tm)
     
-    corpus <- ReadCorpus(dir.name, base.dir)
+    corpus <- ReadCorpus(dir.name, base.dir, split)
 #    corpus <- SplitCorpusIntoSentences(corpus)
     corpus <- CleanCorpus(corpus)
     
@@ -37,10 +37,13 @@ BuildCleanCorpus <- function(dir.name, base.dir = "~/r/capstone/data") {
 #           that are already split into sentences
 # base.dir: the base directory
 #
-ReadCorpus <- function(dir.name, base.dir) {
+ReadCorpus <- function(dir.name = "short", base.dir = "~/r/capstone/data", split = TRUE) {
     require(tm)
     
-    dir      <- paste(c(base.dir, dir.name, "split"), collapse = "/")
+    dir      <- paste(c(base.dir, dir.name), collapse = "/")
+    if (split) {
+        dir  <- paste(c(dir, "split"), collapse = "/")
+    }
     print(paste(c("Building corpus in ", dir, "at", Sys.time()), collapse = " "))
     
     src       <- DirSource(directory = dir, encoding = "UTF-8", mode = "text")
@@ -62,8 +65,8 @@ CleanCorpus <- function(c) {
     print(paste(c("tolower done:", Sys.time()), collapse = " "))
     c <- tm_map(c, removeNumbers)
     print(paste(c("removeNumbers done:", Sys.time()), collapse = " "))
-    c <- tm_map(c, removeWords, stopwords("english"))
-    print(paste(c("stopwords done:", Sys.time()), collapse = " "))
+#    c <- tm_map(c, removeWords, stopwords("english"))
+#    print(paste(c("stopwords done:", Sys.time()), collapse = " "))
     c <- tm_map(c, removePunctuation)  # reconsider if separating sentences
     print(paste(c("removePunctuation done:", Sys.time()), collapse = " "))
     #    c <- tm_map(c, stemDocument)
