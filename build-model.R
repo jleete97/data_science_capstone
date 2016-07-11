@@ -50,49 +50,57 @@ BuildMultiGramModel <- function(corpus, max.gram.size = 3, min.count = 3) {
     options(mc.cores = 1)
     
     print("=== Building TDMs...")
-    tdm1 <- TermDocumentMatrix(corpus, control = list(tokenize = Tokenizer1))
-    if (max.gram.size > 1) {
-        print("...2...")
-        tdm2 <- TermDocumentMatrix(corpus, control = list(tokenize = Tokenizer2))
-    }
-    if (max.gram.size > 2) {
-        print("...3...")
-        tdm3 <- TermDocumentMatrix(corpus, control = list(tokenize = Tokenizer3))
-    }
-    if (max.gram.size > 3) {
-        print("...4...")
-        tdm4 <- TermDocumentMatrix(corpus, control = list(tokenize = Tokenizer4))
-    }
-    print("Done building TDMs.")
+    dfs  <- list()
     
-    if (max.gram.size == 1) {
-        tdm <- tdm1
-    } else if (max.gram.size == 2) {
-        tdm <- c(tdm1, tdm2)
-    } else if (max.gram.size == 3) {
-        tdm <- c(tdm1, tdm2, tdm3)
-    } else if (max.gram.size == 4) {
-        tdm <- c(tdm1, tdm2, tdm3, tdm4)
+    for (i in 1:max.gram.size) {
+        print(paste(c("Building TDM", i, "..."), collapse = " "))
+        tdm <- BuildTdm(corpus, i)
+        print(paste(c("Building dataframe", i, "..."), collapse = " "))
+        df  <- ExtractDataFromTdm(tdm)
+        tdm <- NULL # explicitly free space
+        dfs[as.character(i)] <- df
     }
     
-    # Extract relevant data
+    print("Done building model dataframes.")
+    dfs
+}
+
+BuildTdm <- function(corpus, gram.size) {
+    require(tm)
+    require(RWeka)
+    
+    if (gram.size == 1) {
+        tdm <- TermDocumentMatrix(corpus, control = list(tokenize = Tokenizer1))
+    } else if (gram.size == 2) {
+        tdm <- TermDocumentMatrix(corpus, control = list(tokenize = Tokenizer2))
+    } else if (gram.size == 3) {
+        tdm <- TermDocumentMatrix(corpus, control = list(tokenize = Tokenizer3))
+    } else if (gram.size == 4) {
+        tdm <- TermDocumentMatrix(corpus, control = list(tokenize = Tokenizer4))
+    }
+}
+
+# Build a dataframe from a TermDocumentMatrix, which contains the essentials of
+# the original data:
+# 
+# term       : the n-gram
+# total.freq : the number of occurences of the n-gram.
+# 
+ExtractDataFromTdm <- function(tdm) {
     
     # N-gram terms
     terms  <- tdm$dimnames$Terms
     # Dataframe of indexes into term list, term frequencies (per document -- which we'll need to collapse)
     df     <- data.frame(term.index = tdm$i, doc.index = tdm$j, term.freq = tdm$v)
     
-    # Free up some RAM
-    tdm    <- NULL
-    
     # Collapse dataframe: term index, total term count (drops doc index)
     df <- df %>% group_by(term.index) %>% summarize(total.freq = sum(term.freq))
     # Substitute terms for indices
     df <- df %>% mutate(term = terms[term.index])
     # Reorder by term (optional?)
-    o <- order(terms)
-    df <- df %>% mutate(term = terms[term.index[o]], total.freq = total.freq[o])
-#   TODO get the above working
+#    o <- order(terms)
+#    df <- df %>% mutate(term = terms[term.index[o]], total.freq = total.freq[o])
+    #   TODO get the above working
     
     df
 }
@@ -234,6 +242,44 @@ Predict <- function(hash.model, words) {
     } else {
         print("<not found>")
     }
+}
+
+PredictMultiGram <- function(multigram.model, text) {
+    require(tm)
+    
+#    words <- strsplit(text, "\\s+")
+    
+    match.found <- TRUE
+    word.count <- 1
+    best.matches <- c("")
+
+    while (match.found) {
+        words <- NormalizeInput(text, word.count) # ["hello", "world"]
+        ngram <- paste(words, collapse = " ")     # "hello world"
+        ngram.len   <- nchar(ngram)               # 11
+        
+        matching.indices <- substr(multigram.model$term, 1, ngram.len) == ngram
+        matching.terms   <- multigram.model[matching.indices, c("term", "total.freq")]
+        
+        if (length(matching.terms$term) > 0) {
+            match.found <- TRUE
+            word.count  <- word.count + 1
+            
+            most.matches       <- max(matching.terms$total.freq)
+            best.matches <- matching.terms[matching.terms$total.freq == most.matches, ]$term
+            
+            print(paste(best.matches, collapse = ", "))
+        } else {
+            match.found <- FALSE
+        }
+    }
+    
+    print("Found:")
+    print(paste(best.matches, collapse = ", "))
+
+    df <- multigram.model[substr(multigram.model$term, 0, nchar(text))]
+    
+    df
 }
 
 # Normalize a text string to a string of words of the type to match a key in
