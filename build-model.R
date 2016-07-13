@@ -58,7 +58,7 @@ BuildMultiGramModel <- function(corpus, max.gram.size = 3, min.count = 3) {
         print(paste(c("Building dataframe", i, "..."), collapse = " "))
         df  <- ExtractDataFromTdm(tdm)
         tdm <- NULL # explicitly free space
-        dfs[as.character(i)] <- df
+        dfs[[i]] <- df
     }
     
     print("Done building model dataframes.")
@@ -247,12 +247,12 @@ Predict <- function(hash.model, words) {
 PredictMultiGram <- function(multigram.model, text) {
     require(tm)
     
-#    words <- strsplit(text, "\\s+")
+    #    words <- strsplit(text, "\\s+")
     
     match.found <- TRUE
     word.count <- 1
     best.matches <- c("")
-
+    
     while (match.found) {
         words <- NormalizeInput(text, word.count) # ["hello", "world"]
         ngram <- paste(words, collapse = " ")     # "hello world"
@@ -276,10 +276,54 @@ PredictMultiGram <- function(multigram.model, text) {
     
     print("Found:")
     print(paste(best.matches, collapse = ", "))
-
+    
     df <- multigram.model[substr(multigram.model$term, 0, nchar(text))]
     
     df
+}
+
+PredictMultiGramDfs <- function(multigram.model.dfs, text) {
+    require(tm)
+    
+    match.found <- TRUE
+    word.count <- 1
+    best.matches <- c("")
+    
+    while (match.found) {
+        words <- NormalizeInput(text, word.count) # ["hello", "world"] for word.count = 2
+        df    <- multigram.model.dfs[[word.count]]
+        
+        ngram <- ""
+        if (word.count > 1) {
+            ngram <- paste(words[1:(word.count - 1)], collapse = " ") # "hello world"
+        }
+        ngram.len        <- nchar(ngram)               # 11
+        
+        if (ngram.len == 0) {
+            matching.indices <- rep(TRUE, length(df$term))
+        } else {
+            matching.indices <- substr(multigram.model.dfs$term, 1, ngram.len) == ngram
+            # matching.indices <- df$term == ngram
+        }
+        matching.terms   <- df[matching.indices, c("term", "total.freq")]
+        
+        if (length(matching.terms$term) > 0) {
+            match.found <- TRUE
+            word.count  <- word.count + 1
+            
+            most.matches <- max(matching.terms$total.freq)
+            best.matches <- matching.terms[matching.terms$total.freq == most.matches, ]$term
+            
+            print(paste(best.matches, collapse = ", "))
+        } else {
+            match.found <- FALSE
+        }
+    }
+    
+    print("Found:")
+    print(paste(best.matches, collapse = ", "))
+    
+    best.matches
 }
 
 # Normalize a text string to a string of words of the type to match a key in

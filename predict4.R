@@ -8,14 +8,14 @@
 #   Corpus.
 # - Clean up the Corpus, 
 
-source('build-corpus.R')
-source('build-model.R')
+source('build-corpus2.R')
+source('build-model2.R')
 
 library(tm)
 library(RWeka)
 library(dplyr)
 
-corpus <- BuildCleanCorpus(dir = "short", base.dir = "~/r/capstone/data", split = TRUE)
+corpus <- BuildCleanCorpus(dir = "partial", base.dir = "~/r/capstone/data", split = TRUE)
 model <- BuildMultiGramModel(corpus, min.count = 1)
 
 PredictMultiGramDfs(model, "The guy in front of me just bought a pound of bacon, a bouquet, and a case of")
