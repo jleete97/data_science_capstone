@@ -153,13 +153,13 @@ PredictMultiGramDfs <- function(multigram.model.dfs, text) {
             
             results <- matching.terms %>%
                 rowwise() %>%
-                arrange(desc(total.freq)) %>%
+#                arrange(desc(total.freq)) %>%
                 top_n(n = 3, wt = total.freq)
             best.matches <- results$term
 #            most.matches <- max(matching.terms$total.freq)
 #            best.matches <- matching.terms[matching.terms$total.freq == most.matches, ]$term
             
-            print(paste(best.matches, collapse = ", "))
+#            print(paste(best.matches, collapse = ", "))
         } else {
             match.found <- FALSE
         }
