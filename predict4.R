@@ -11,6 +11,9 @@
 source('build-corpus2.R')
 source('build-model2.R')
 
+# Bump up heap space for RWeka
+options(java.parameters = "-Xmx4g")
+
 library(tm)
 library(RWeka)
 library(dplyr)
