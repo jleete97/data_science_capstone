@@ -17,7 +17,7 @@ library(dplyr)
 BuildMultiGramModel <- function(corpus, max.gram.size = 3, min.count = 3) {
     require(tm)
     require(RWeka)
-    print(paste(c("Building", gram.size, "gram multi-gram model from corpus, max gram size", max.gram.size), collapse = " "))
+    print(paste(c("Building", max.gram.size, "gram multi-gram model from corpus, max gram size", max.gram.size), collapse = " "))
     
     # Required on Mac to prevent NGramTokenizer from failing.
     options(mc.cores = 1)
@@ -111,6 +111,15 @@ FindMostCommonFollowingTerm <- function(df) {
 #        slice(which.max(n))
 }
 
+# Find best matches in each of the dataframes $term components.
+# For the N-th dataframe, we're looking for the last (N - 1) words of the text
+# matching the first (N - 1) words of the $term component.
+# We then find the most common subsequent word(s).
+#
+# For instance, for DF 3 (3-grams, such as "in my dresser," "in my pocket"),
+# with text "my wallet is in my," we search for 3-grams that begin with the
+# last 2 words of the text, "in my," and find the most common one.
+# 
 PredictMultiGramDfs <- function(multigram.model.dfs, text) {
     require(tm)
     
@@ -118,13 +127,13 @@ PredictMultiGramDfs <- function(multigram.model.dfs, text) {
     word.count <- 1
     best.matches <- c("")
     
-    while (match.found) {
+    while (match.found && word.count <= length(multigram.model.dfs)) {
         words <- NormalizeInput(text, word.count) # ["hello", "world"] for word.count = 2
         df    <- multigram.model.dfs[[word.count]]
         
         ngram <- ""
         if (word.count > 1) {
-            ngram <- AllButLast(words)
+            ngram <- LastN(words, word.count - 1)
 #            ngram <- paste(words[1:(word.count - 1)], collapse = " ") # "hello world"
         }
         ngram.len        <- nchar(ngram)               # 11
@@ -142,8 +151,13 @@ PredictMultiGramDfs <- function(multigram.model.dfs, text) {
             match.found <- TRUE
             word.count  <- word.count + 1
             
-            most.matches <- max(matching.terms$total.freq)
-            best.matches <- matching.terms[matching.terms$total.freq == most.matches, ]$term
+            results <- matching.terms %>%
+                rowwise() %>%
+                arrange(desc(total.freq)) %>%
+                top_n(n = 3, wt = total.freq)
+            best.matches <- results$term
+#            most.matches <- max(matching.terms$total.freq)
+#            best.matches <- matching.terms[matching.terms$total.freq == most.matches, ]$term
             
             print(paste(best.matches, collapse = ", "))
         } else {
@@ -186,5 +200,13 @@ AllButLast <- function(text) {
     l   <- v[[1]]
     len <- length(l)
     t   <- substring(text, 1, l[[len]] - 1)
+    t
+}
+
+LastN <- function(text, n) {
+    v   <- gregexpr(" ", text)
+    l   <- v[[1]]
+    len <- length(l)
+    t   <- substring(text, l[[len - n + 1]] + 1)
     t
 }
