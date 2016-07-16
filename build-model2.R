@@ -120,7 +120,7 @@ FindMostCommonFollowingTerm <- function(df) {
 # with text "my wallet is in my," we search for 3-grams that begin with the
 # last 2 words of the text, "in my," and find the most common one.
 # 
-PredictMultiGramDfs <- function(multigram.model.dfs, text) {
+PredictMultiGramDfs <- function(multigram.model.dfs, text, options) {
     require(tm)
     
     match.found <- TRUE
@@ -129,14 +129,15 @@ PredictMultiGramDfs <- function(multigram.model.dfs, text) {
     
     while (match.found && word.count <= length(multigram.model.dfs)) {
         words <- NormalizeInput(text, word.count) # ["hello", "world"] for word.count = 2
+        print("Input normalized to")
+        print(words)
         df    <- multigram.model.dfs[[word.count]]
         
         ngram <- ""
         if (word.count > 1) {
-            ngram <- LastN(words, word.count - 1)
-#            ngram <- paste(words[1:(word.count - 1)], collapse = " ") # "hello world"
+            ngram <- LastN(words, word.count - 1) # "hello world" if word.count == 3
         }
-        ngram.len        <- nchar(ngram)               # 11
+        ngram.len        <- nchar(ngram) # 11, for that case
         
         if (ngram.len == 0) {
             matching.indices <- rep(TRUE, length(df$term))
@@ -152,7 +153,7 @@ PredictMultiGramDfs <- function(multigram.model.dfs, text) {
             word.count  <- word.count + 1
             
             results <- matching.terms %>%
-                rowwise() %>%
+#                rowwise() %>%
 #                arrange(desc(total.freq)) %>%
                 top_n(n = 3, wt = total.freq)
             best.matches <- results$term
@@ -165,10 +166,7 @@ PredictMultiGramDfs <- function(multigram.model.dfs, text) {
         }
     }
     
-    print("Found:")
-    print(paste(best.matches, collapse = ", "))
-    
-    best.matches
+    paste(best.matches, collapse = ", ")
 }
 
 # Normalize a text string to a string of words of the type to match a key in
@@ -182,7 +180,9 @@ NormalizeInput <- function(words, gram.size) {
     
     words <- tolower(words)
 #    words <- removeWords(words, stopwords("en"))
+    words <- removeWords(words, stopwordList)
     words <- removePunctuation(words)
+#    words <- JoinStopwords(words)
     words <- gsub("^\\s+|\\s+$", "", words)
     words <- gsub("\\s+", " ", words)
     
@@ -210,3 +210,46 @@ LastN <- function(text, n) {
     t   <- substring(text, l[[len - n + 1]] + 1)
     t
 }
+
+JoinStopwords <- function(text) {
+    v  <- strsplit(text, " ")
+    vv <- v[[1]]
+    f  <- vv[1]
+    
+    for (i in 2:length(vv)) {
+        if (vv[[i]] %in% stopwordList) {
+            j <- "_"
+        } else {
+            j <- " "
+        }
+        
+        f <- paste(c(f, vv[[i]]), collapse = j)
+    }
+    
+    f
+}
+
+StopwordList <- function() {
+    c("i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you",
+    "your", "yours", "yourself", "yourselves","he", "him", "his", "himself", "she",
+    "her", "hers", "herself", "it", "its", "itself", "they", "them", "their",
+    "theirs", "themselves","what", "which", "who", "whom", "this", "that", "these",
+    "those", "am", "is", "are", "was", "were", "be", "been", "being",
+    "have", "has", "had", "having", "do", "does", "did", "doing", "would",
+    "should", "could", "ought", "i'm", "you're", "he's", "she's", "it's", "we're",
+    "they're", "i've", "you've", "we've", "they've", "i'd", "you'd", "he'd", "she'd",
+    "we'd", "they'd", "i'll", "you'll", "he'll", "she'll", "we'll", "they'll", "isn't",
+    "aren't", "wasn't", "weren't", "hasn't", "haven't", "hadn't", "doesn't", "don't", "didn't",
+    "won't", "wouldn't", "shan't", "shouldn't", "can't", "cannot", "couldn't", "mustn't", "let's",
+    "that's", "who's", "what's", "here's", "there's", "when's", "where's", "why's", "how's",
+    "a", "an", "the", "and", "but", "if", "or", "because", "as",
+    "until", "while", "of", "at", "by", "for", "with", "about", "against",
+    "between", "into", "through", "during", "before", "after", "above", "below", "to",
+    "from", "up", "down", "in", "out", "on", "off", "over", "under",
+    "again", "further", "then", "once", "here", "there", "when", "where", "why",
+    "how", "all", "any", "both", "each", "few", "more", "most", "other",
+    "some", "such", "no", "nor", "not", "only", "own", "same", "so",
+    "than", "too", "very")
+}
+
+stopwordList <- StopwordList()

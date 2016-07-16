@@ -8,18 +8,19 @@
 #   Corpus.
 # - Clean up the Corpus, 
 
+# Bump up heap space for RWeka -- do FIRST
+options(java.parameters = "-Xmx4g")
+
 source('build-corpus2.R')
 source('build-model2.R')
-
-# Bump up heap space for RWeka
-options(java.parameters = "-Xmx4g")
 
 library(tm)
 library(RWeka)
 library(dplyr)
 
-corpus <- BuildCleanCorpus(dir = "partial", base.dir = "~/r/capstone/data", split = TRUE)
+corpus <- BuildCleanCorpus(dir = "full", base.dir = "~/r/capstone/data", split = TRUE)
 model <- BuildMultiGramModel(corpus, min.count = 1)
+stopwordList <- StopwordList()
 
 PredictMultiGramDfs(model, "The guy in front of me just bought a pound of bacon, a bouquet, and a case of")
 PredictMultiGramDfs(model, "You're the reason why I smile everyday. Can you follow me please? It would mean the")
